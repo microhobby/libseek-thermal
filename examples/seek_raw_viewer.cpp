@@ -1,5 +1,4 @@
-// Seek Thermal Viewer/Streamer
-// http://github.com/fnoop/maverick
+// based on Seek Thermal Viewer/Streamer by http://github.com/fnoop/maverick
 
 #include <opencv2/highgui/highgui.hpp>
 #include <opencv2/imgproc/imgproc.hpp>
@@ -11,6 +10,10 @@
 #include <math.h>
 #include <memory>
 #include "args.h"
+#include <fstream>
+#include <iostream>
+#include <iomanip>
+#include <limits>
 
 using namespace LibSeek;
 
@@ -19,6 +22,38 @@ static volatile sig_atomic_t sigflag = 0;
 void handle_sig(int sig) {
     (void)sig;
     sigflag = 1;
+}
+
+void writepgm(
+    const cv::Mat & seekframe, 
+    const std::string & prefix, const int framenumber, 
+    const std::string & comment, const bool ascii
+) {
+    std::ostringstream pgmfilename;
+    pgmfilename << prefix;
+    pgmfilename << std::internal << std::setfill('0') << std::setw(6);
+    pgmfilename << framenumber;
+    pgmfilename << ".pgm";
+    std::ofstream pgmfile;
+    pgmfile.open(pgmfilename.str());
+    if (ascii) {
+        pgmfile << "P2\n";
+    } else {
+        pgmfile << "P5\n";
+    }
+    pgmfile << "# " << comment << "\n";
+    pgmfile << seekframe.cols << " " << seekframe.rows << "\n";
+    pgmfile << std::to_string(std::numeric_limits<uint16_t>::max()) << "\n";
+    if (ascii) {
+        for (int y = 0; y < seekframe.rows; y++) {
+            for (int x = 0; x < seekframe.cols; x++) {
+                pgmfile << std::to_string(seekframe.at<uint16_t>(y,x)) << " ";
+            }
+        }
+    } else {
+        pgmfile.write(reinterpret_cast<char*>(seekframe.data), seekframe.total()*seekframe.elemSize());
+    }
+    pgmfile.close();
 }
 
 int main(int argc, char** argv)
@@ -77,6 +112,7 @@ int main(int argc, char** argv)
 
     // Mat containers for seek frames
     cv::Mat seekframe, outframe;
+    int outframenumber = 0;
 
     // Main loop to retrieve frames from camera and output
     while (!sigflag) {
@@ -98,7 +134,21 @@ int main(int argc, char** argv)
         central = mean(0);
 
         printf("%d %d %d %d\n", 
-        int(min), int(max), int(central), int(seek->device_temp_sensor()));
+        int(min), int(max), int(central), seek->device_temp_sensor());
+        
+        //int framenumber = seek->frame_counter();
+        if (outframenumber % 10 == 0) {
+            std::string comment =
+                std::to_string(int(central))
+                +" "+std::to_string(seek->device_temp_sensor());
+            writepgm(
+                seekframe, 
+                "seekframe_", outframenumber, 
+                comment,
+                true
+            );
+        }
+        outframenumber++;
 
         seekframe.convertTo(outframe, CV_8U, 1, 128-central);
 
