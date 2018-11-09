@@ -14,6 +14,7 @@
 #include <iostream>
 #include <iomanip>
 #include <limits>
+#include <chrono>
 
 using namespace LibSeek;
 
@@ -24,6 +25,9 @@ void handle_sig(int sig) {
     sigflag = 1;
 }
 
+/*
+ * custom write pgm function since opencv does not support comments
+ */
 void writepgm(
     const cv::Mat & seekframe, 
     const std::string & prefix, const int framenumber, 
@@ -51,6 +55,7 @@ void writepgm(
             }
         }
     } else {
+        // TODO: check endianess
         pgmfile.write(reinterpret_cast<char*>(seekframe.data), seekframe.total()*seekframe.elemSize());
     }
     pgmfile.close();
@@ -63,6 +68,7 @@ int main(int argc, char** argv)
     args::HelpFlag help(parser, "help", "Display this help menu", {'h', "help"});
     args::ValueFlag<std::string> _ffc(parser, "FFC", "Additional Flat Field calibration - provide ffc file", {'F', "FFC"});
     args::ValueFlag<std::string> _camtype(parser, "camtype", "Seek Thermal Camera Model - seek or seekpro", {'t', "camtype"});
+    args::ValueFlag<int> _interval(parser, "interval", "Interval of images to store on disk. Chose 1 for every image. Default: Every tenth frame.", {'i', "interval"});
 
     // Parse arguments
     try
@@ -89,6 +95,10 @@ int main(int argc, char** argv)
     std::string camtype = "seek";
     if (_camtype)
         camtype = args::get(_camtype);
+    int interval = 10;
+    if (_interval) {
+        interval = args::get(_interval);
+        }
 
     // Register signals
     signal(SIGINT, handle_sig);
@@ -113,17 +123,18 @@ int main(int argc, char** argv)
     // Mat containers for seek frames
     cv::Mat seekframe, outframe;
     int outframenumber = 0;
+    auto time_start = std::chrono::high_resolution_clock::now();
 
     // Main loop to retrieve frames from camera and output
+    // If signal for interrupt/termination was received, break out of main loop and exit
     while (!sigflag) {
-
-        // If signal for interrupt/termination was received, break out of main loop and exit
+        
+        // Retrieve frame from seek and process
         if (!seek->read(seekframe)) {
             std::cout << "Failed to read frame from camera, exiting" << std::endl;
             return -1;
         }
-
-        // Retrieve frame from seek and process
+        auto time_frame = std::chrono::high_resolution_clock::now();
 
         // get raw max/min/central values
         double min, max, central;
@@ -137,10 +148,12 @@ int main(int argc, char** argv)
         int(min), int(max), int(central), seek->device_temp_sensor());
         
         //int framenumber = seek->frame_counter();
-        if (outframenumber % 10 == 0) {
+        if (outframenumber % interval == 0) {
+            auto frametime = std::chrono::duration_cast<std::chrono::nanoseconds>(time_frame-time_start).count(); // nanoseconds since recording started (for variable framerate presentation)
             std::string comment =
                 std::to_string(int(central))
-                +" "+std::to_string(seek->device_temp_sensor());
+                +" "+std::to_string(seek->device_temp_sensor())
+                +" "+std::to_string(frametime);
             writepgm(
                 seekframe, 
                 "seekframe_", outframenumber, 
