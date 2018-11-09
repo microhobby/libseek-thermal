@@ -24,12 +24,15 @@ void handle_sig(int sig) {
 
 double device_sensor_to_k(double sensor) {
     // formula from http://aterlux.ru/article/ntcresistor-en
+    /*
     double ref_temp = 297.0; // 23C from table
     double ref_sensor = 6616.0; // ref value from table
     double beta = 200; // best beta coef we've found
     double part3 = log(sensor) - log(ref_sensor);
     double parte = part3 / beta + 1.0 / ref_temp;
     return 1.0 / parte;
+    * */
+    return 1240.12-0.604954*sensor+7.49878e-05*sensor*sensor+273.0;
 }
 
 double temp_from_raw(int x, double device_k) {
@@ -38,9 +41,13 @@ double temp_from_raw(int x, double device_k) {
     // 330 is max temperature supported by Seek device
     // 16384 is full 14 bits value, max possible ()
     double base = x * 330 / 16384.0;
+    /*
     double lin_k = -1.5276; // derived from Excel linear model
     double lin_offset= -470.8979; // same Excel model
     return base - device_k * lin_k + lin_offset - 273.0;
+    * */
+    // 0.0215*(x-14850)-0.0215*(device_k-273.0);
+    return base-273.0-(device_k-273.0);
 }
 
 void overlay_values(Mat &outframe, Point coord, Scalar color) {
