@@ -3,3 +3,5 @@ tags
 *.o
 *.a
 *.so
+
+*.pgm
