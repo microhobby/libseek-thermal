@@ -22,25 +22,15 @@ void handle_sig(int sig) {
     sigflag = 1;
 }
 
-double device_sensor_to_k(double sensor) {
-    // formula from http://aterlux.ru/article/ntcresistor-en
-    double ref_temp = 297.0; // 23C from table
-    double ref_sensor = 6616.0; // ref value from table
-    double beta = 200; // best beta coef we've found
-    double part3 = log(sensor) - log(ref_sensor);
-    double parte = part3 / beta + 1.0 / ref_temp;
-    return 1.0 / parte;
-}
-
-double temp_from_raw(int x, double device_k) {
+double temp_from_raw(int x, int device) {
     // Constants below are taken from linear trend line in Excel.
     // -273 is translation of Kelvin to Celsius
     // 330 is max temperature supported by Seek device
     // 16384 is full 14 bits value, max possible ()
+    //x = x+9645.54-2.54454*double(device);
+    x = x+8858.13-2.3598*double(device);
     double base = x * 330 / 16384.0;
-    double lin_k = -1.5276; // derived from Excel linear model
-    double lin_offset= -470.8979; // same Excel model
-    return base - device_k * lin_k + lin_offset - 273.0;
+    return base-273.0;
 }
 
 void overlay_values(Mat &outframe, Point coord, Scalar color) {
@@ -69,14 +59,12 @@ void process_frame(Mat &inframe, Mat &outframe, float scale, int colormap, int r
     Scalar valat=inframe.at<uint16_t>(Point(inframe.cols/2.0, inframe.rows/2.0));
     central=valat[0];
 
-    double device_k=device_sensor_to_k(device_temp_sensor);
-
-    double mintemp=temp_from_raw(min, device_k);
-    double maxtemp=temp_from_raw(max, device_k);
-    double centraltemp=temp_from_raw(central, device_k);
+    double mintemp=temp_from_raw(min, device_temp_sensor);
+    double maxtemp=temp_from_raw(max, device_temp_sensor);
+    double centraltemp=temp_from_raw(central, device_temp_sensor);
 
     printf("rmin,rmax,central,devtempsns: %d %d %d %d\t", (int)min, (int)max, (int)central, (int)device_temp_sensor);
-    printf("min-max-center-device: %.1f %.1f %.1f %.1f\n", mintemp, maxtemp, centraltemp, device_k-273.0);
+    printf("min,max,center: %.1f %.1f %.1f\n", mintemp, maxtemp, centraltemp);
 
     normalize(inframe, frame_g16, 0, 65535, NORM_MINMAX);
 
