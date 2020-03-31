@@ -67,9 +67,6 @@ void process_frame(Mat &inframe, Mat &outframe, float scale, int colormap, int r
     maxtemp += 15;
     centraltemp += 15;
 
-    printf("rmin,rmax,central,devtempsns: %d %d %d %d\t", (int)min, (int)max, (int)central, (int)device_temp_sensor);
-    printf("min,max,center: %.1f %.1f %.1f\n", mintemp, maxtemp, centraltemp);
-
     normalize(inframe, frame_g16, 0, 65535, NORM_MINMAX);
 
     // Convert seek CV_16UC1 to CV_8UC1
