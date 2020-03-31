@@ -1,0 +1,9 @@
+docker run \
+-ti \
+--rm \
+--privileged \
+-v /tmp/.X11-unix:/tmp/.X11-unix \
+-e DISPLAY=$DISPLAY \
+--net=host \
+matheuscastello/seek-thermal \
+seek_viewer -s 2 -c 10 -t seek
