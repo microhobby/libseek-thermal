@@ -63,6 +63,10 @@ void process_frame(Mat &inframe, Mat &outframe, float scale, int colormap, int r
     double maxtemp=temp_from_raw(max, device_temp_sensor);
     double centraltemp=temp_from_raw(central, device_temp_sensor);
 
+    mintemp += 15;
+    maxtemp += 15;
+    centraltemp += 15;
+
     printf("rmin,rmax,central,devtempsns: %d %d %d %d\t", (int)min, (int)max, (int)central, (int)device_temp_sensor);
     printf("min,max,center: %.1f %.1f %.1f\n", mintemp, maxtemp, centraltemp);
 
